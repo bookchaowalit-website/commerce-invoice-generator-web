@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatTHB, invoiceText, invoiceTotal, invoiceTotals, lineTotal, parseDraft, toAmount, type Draft } from "./invoice";
+import { formatTHB, invoiceText, invoiceTotal, invoiceTotals, lineTotal, parseDraft, toAmount, type Draft } from "@/lib/invoice";
 
 describe("amounts", () => {
   it("coerces invalid or negative input to zero", () => {
