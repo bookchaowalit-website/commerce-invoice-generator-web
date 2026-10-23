@@ -1,46 +1,45 @@
-# bookchaowalit-invoice-generator-frontend — Product brief
+# Invoice Generator — Product truth
 
-**Slug:** `bookchaowalit-website/bookchaowalit-invoice-generator-frontend`  
-**Generated:** 2026-08-11 (bulk Book Dev closeout)  
-**Status:** starter / portfolio boundary
+> Inferred from the code and copy (no user interview). Checked against the portfolio card claims review
+> (`portfolio-site-web/docs/audits/CARD-CLAIMS-REVIEW-2026-10.md`, row `invoice-generator`: "Card already matches
+> lib/invoice.ts and app/page.tsx") on 2026-10-23.
 
-## Purpose
+## What it is
 
-Portfolio repository under Book Dev. This brief records ownership and the
-current honest status so the nested tree is not an empty shell in the task
-system.
+A client-only THB invoice draft desk with one autosaved draft and a live paper preview.
 
-## Runnable path
+## Who it is for
 
-See `README.md` for install and run instructions when present.
+A freelancer or small service business that wants to check invoice arithmetic (VAT, withholding) and print a clean
+draft, and a portfolio visitor looking at a careful small tool.
 
-## Limits
+## What works today
 
-- Not claimed as production-ready unless README and tests prove it.
-- Mobile smoke / emulator acceptance is separate and toolchain-dependent.
+1. Edit sender, client, invoice number, issue date and any number of line items (at least one stays).
+2. Totals round half-up to the satang; negative or non-numeric quantities and rates count as 0.
+3. Optional VAT 7% and withholding tax at 1, 2, 3 or 5% of the pre-VAT subtotal; due = subtotal + VAT − withholding.
+4. Copy the invoice as plain text (with feedback if the browser blocks the clipboard) or print / save as PDF.
+5. One draft autosaves to `localStorage`; on load it is validated and older drafts are upgraded.
+6. `/api/mcp` answers JSON-RPC (`initialize`, `ping`, `tools/list`, `tools/call`) with one honest `get_app_info` tool;
+   unknown tools and methods return JSON-RPC errors.
+7. Front-end and server errors go to Sentry (errors only, personal data stripped) when `NEXT_PUBLIC_SENTRY_DSN` is set.
 
-## Source README excerpt
+## What does not work (and must not be claimed)
 
-```
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+- Not a Thai tax invoice (no tax ID, branch or receipt fields); VAT and withholding are arithmetic aids.
+- One draft only; no invoice history, numbering sequence, due dates or payment terms.
+- No account, sharing, sync, e-mail or payment action. Nothing leaves the browser.
 
-## Getting Started
+## Live URL and deploy state
 
-First, run the development server:
+- Live: https://invoice-generator.bookchaowalit.com (HTTP 200 on 2026-10-23).
+- The Vercel project `bookchaowalit-invoice-generator-frontend` is deployed by CLI only. Its Git link names the old
+  repository (`bookchaowalit/bookchaowalit-invoice-generator-frontend`), so a push to `main` does not deploy. The last
+  production deploy is the CVE patch (2026-10-23 12:06, CLI, commit 62ddaa6); later commits (tests, Sentry, the
+  stamp layout fix) stay undeployed until the owner reconnects Vercel Git to this repository (owner action D9).
+- `NEXT_PUBLIC_SENTRY_DSN` is set on the Vercel project (Sentry project `commerce-invoice-generator-web`, org
+  `personal-yu0`); it takes effect on the next deploy.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Boundaries
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize an
-```
+- Browser-only apart from the stateless `/api/mcp` route. No server storage, no personal data collected.
