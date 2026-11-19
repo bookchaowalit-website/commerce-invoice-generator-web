@@ -45,13 +45,28 @@ async function copyText(text: string) {
   }
 }
 
+// index: where it sat in the stored list when removed. nextShown / prevShown: the rows shown around it, for focus.
+type RemovedEntry = { line: Line; index: number; nextShown?: string; prevShown?: string };
+type RemovedBatch = { removals: RemovedEntry[]; viaKeyboard: boolean };
+const removedLabel = (removals: RemovedEntry[]) => (removals.length === 1 ? `Removed “${removals[0].line.desc || "Untitled line"}”` : `Removed ${removals.length} lines`);
+/** Put a removed line back at its old index, unless it is already there. */
+function putBack(list: Line[], item: Line, index: number): Line[] {
+  return list.some((other) => other.id === item.id) ? list : [...list.slice(0, index), item, ...list.slice(index)];
+}
+
 export default function Home() {
   const [draft, setDraft, ready] = useStoredState("invoice-generator-draft-v2", INITIAL_DRAFT, parseDraft);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [announcement, setAnnouncement] = useState("");
-  const [removed, setRemoved] = useState<{ line: Line; index: number } | null>(null);
+  // Every removal still inside the Undo window: one Undo puts them all back where they were.
+  const [removed, setRemovedState] = useState<RemovedBatch | null>(null);
+  // The latest batch, so two removals before a re-render still both land in it.
+  const removedRef = useRef<RemovedBatch | null>(null);
+  const setRemoved = (batch: RemovedBatch | null) => { removedRef.current = batch; setRemovedState(batch); };
   const [toastFocused, setToastFocused] = useState(false);
   const undoRef = useRef<HTMLButtonElement>(null);
+  const focusNext = useRef<string[] | null>(null);
+  const addRef = useRef<HTMLButtonElement>(null);
   const toastRef = useRef<HTMLDivElement>(null);
   const totals = useMemo(() => invoiceTotals(draft), [draft]);
   const invoiceText = useMemo(() => renderInvoiceText(draft), [draft]);
@@ -64,9 +79,22 @@ export default function Home() {
     dated.current = true;
     setDraft((current) => (current.issued ? current : { ...current, issued: todayIso() }));
   }, [ready, setDraft]);
+  // A removal made from the keyboard moves focus to Undo (the focused Remove button has just gone).
+  useEffect(() => { if (removed?.viaKeyboard) undoRef.current?.focus(); }, [removed]);
+  // When the toast closes after Undo or Escape, focus goes back near the removed row once the list has re-rendered:
+  // the first of these lines still shown, else Add line.
+  useEffect(() => {
+    const ids = focusNext.current;
+    if (removed || !ids) return;
+    focusNext.current = null;
+    const rows = [...document.querySelectorAll<HTMLElement>(".iv-line[data-item]")];
+    const row = ids.map((id) => rows.find((entry) => entry.dataset.item === id)).find(Boolean);
+    (row?.querySelector<HTMLButtonElement>(".as-danger") ?? addRef.current)?.focus();
+  }, [removed, draft]);
+  // The Undo toast closes 6 s after the latest removal (each removal restarts it), but never while it holds focus.
   useEffect(() => {
     if (!removed || toastFocused) return;
-    const timer = window.setTimeout(() => setRemoved(null), 6000);
+    const timer = window.setTimeout(() => { removedRef.current = null; setRemovedState(null); }, 6000);
     return () => window.clearTimeout(timer);
   }, [removed, toastFocused]);
   const toastShown = removed !== null;
@@ -89,17 +117,27 @@ export default function Home() {
   function removeLine(line: Line, viaKeyboard: boolean) {
     const index = draft.lines.findIndex((item) => item.id === line.id);
     setDraft((current) => ({ ...current, lines: current.lines.filter((item) => item.id !== line.id) }));
-    setRemoved({ line, index });
-    setAnnouncement(`Removed “${line.desc || "Untitled line"}”. Undo is available for a few seconds.`);
-    if (viaKeyboard) window.setTimeout(() => undoRef.current?.focus(), 0);
+    const removal: RemovedEntry = { line, index, nextShown: draft.lines[index + 1]?.id, prevShown: index > 0 ? draft.lines[index - 1].id : undefined };
+    const removals = [...(removedRef.current?.removals ?? []), removal];
+    setRemoved({ removals, viaKeyboard });
+    setAnnouncement(removals.length === 1 ? `Removed “${line.desc || "Untitled line"}”. Undo is available for a few seconds.` : `Removed ${removals.length} lines. Undo is available for a few seconds.`);
   }
-  function undo() {
-    if (!removed) return;
-    const { line, index } = removed;
-    setDraft((current) => ({ ...current, lines: [...current.lines.slice(0, index), line, ...current.lines.slice(index)] }));
+  function closeToast(focusIds?: string[]) {
+    const last = removedRef.current?.removals.at(-1);
+    // Dismissed: the row after the removed one, else the one before it.
+    focusNext.current = focusIds ?? [last?.nextShown, last?.prevShown].filter((id): id is string => Boolean(id));
     setRemoved(null);
     setToastFocused(false);
-    setAnnouncement(`Restored “${line.desc || "Untitled line"}”.`);
+  }
+  function undo() {
+    const removals = removedRef.current?.removals;
+    if (!removals?.length) return;
+    // Latest removal first, so each index refers to the list as it was just before that removal.
+    setDraft((current) => ({ ...current, lines: removals.reduceRight((list, { line, index }) => putBack(list, line, index), current.lines) }));
+    const latest = removals[removals.length - 1].line;
+    setAnnouncement(removals.length === 1 ? `Restored “${latest.desc || "Untitled line"}”.` : `Restored ${removals.length} lines.`);
+    // Undone: back to the restored row the user removed last.
+    closeToast([latest.id]);
   }
   const copyInvoice = async () => {
     const ok = await copyText(invoiceText);
@@ -143,7 +181,7 @@ export default function Home() {
               {draft.lines.length ? (
                 <ul className="iv-lines">
                   {draft.lines.map((line, index) => (
-                    <li key={line.id} className="iv-line">
+                    <li key={line.id} className="iv-line" data-item={line.id}>
                       <label className="as-field iv-desc">Item {index + 1}<input value={line.desc} onChange={(event) => updateLine(line.id, { desc: event.target.value })} /></label>
                       <label className="as-field">Qty<input type="number" min="0" step="any" inputMode="decimal" value={line.qty} onChange={(event) => updateLine(line.id, { qty: toAmount(event.target.value) })} /></label>
                       <label className="as-field">Rate (THB)<input type="number" min="0" step="any" inputMode="decimal" value={line.price} onChange={(event) => updateLine(line.id, { price: toAmount(event.target.value) })} /></label>
@@ -157,7 +195,7 @@ export default function Home() {
               ) : (
                 <div className="as-empty iv-empty"><strong>No line items</strong>Press Add line to bill for the first piece of work.</div>
               )}
-              <div><button className="as-plain" type="button" onClick={addLine}><PlusIcon />Add line</button></div>
+              <div><button ref={addRef} className="as-plain" type="button" onClick={addLine}><PlusIcon />Add line</button></div>
             </section>
 
             <section className="as-composer iv-tax" role="group" aria-labelledby="tax-title">
@@ -212,10 +250,10 @@ export default function Home() {
           aria-label="Undo remove"
           onFocus={() => setToastFocused(true)}
           onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setToastFocused(false); }}
-          onKeyDown={(event) => { if (event.key === "Escape") { setRemoved(null); setToastFocused(false); } }}
+          onKeyDown={(event) => { if (event.key === "Escape") closeToast(); }}
         >
-          <span>Removed “{removed.line.desc || "Untitled line"}”</span>
-          <button ref={undoRef} type="button" className="as-plain" onClick={undo}>Undo</button>
+          <span>{removedLabel(removed.removals)}</span>
+          <button ref={undoRef} type="button" className="as-plain" onClick={undo} aria-label={removed.removals.length === 1 ? "Undo remove" : `Undo remove of ${removed.removals.length} lines`}>Undo</button>
         </div>
       ) : null}
 

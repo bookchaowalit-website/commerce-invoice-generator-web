@@ -94,8 +94,7 @@ describe("lines", () => {
 
   it("the toast closes on its own and on Escape", () => {
     vi.useFakeTimers();
-    press($("[aria-label='Remove Hosting']")!, 0);
-    act(() => { vi.runOnlyPendingTimers(); });
+    press($("[aria-label='Remove Hosting']")!);
     act(() => { vi.runOnlyPendingTimers(); });
     expect($(".as-toast")).toBeNull();
     press($("[aria-label='Remove Consulting']")!);
@@ -123,5 +122,50 @@ describe("copy and print", () => {
     Object.defineProperty(window, "print", { value: print, configurable: true });
     press(button("Print or save PDF"));
     expect(print).toHaveBeenCalled();
+  });
+});
+
+describe("batch Undo", () => {
+  // detail 0 = keyboard (Enter/Space) click, 1 = pointer click.
+  const lineIds = () => [...host.querySelectorAll<HTMLElement>(".iv-line[data-item]")].map((row) => row.dataset.item);
+  const removeButton = (i: number) => host.querySelectorAll<HTMLElement>(".iv-line[data-item]")[i].querySelector<HTMLButtonElement>(".as-danger")!;
+  const undoButton = () => $<HTMLButtonElement>(".as-toast button")!;
+  const escape = () => act(() => { $(".as-toast")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); });
+
+  it("consecutive removes restore together with one Undo", () => {
+    vi.useFakeTimers();
+    press(button("Add line"));
+    const before = lineIds();
+    expect(paperLines()).toEqual(["Consulting", "Hosting", "New line"]);
+    press(removeButton(1));
+    act(() => { vi.advanceTimersByTime(4000); });
+    press(removeButton(0));
+    expect(paperLines()).toEqual(["New line"]);
+    expect($(".as-toast span")!.textContent).toBe("Removed 2 lines");
+    expect(undoButton().getAttribute("aria-label")).toBe("Undo remove of 2 lines");
+    // The second removal restarted the 6 s window: 4 s later it is still open.
+    act(() => { vi.advanceTimersByTime(4000); });
+    press(undoButton());
+    expect(lineIds()).toEqual(before);
+    expect(paperLines()).toEqual(["Consulting", "Hosting", "New line"]);
+    expect($(".as-toast")).toBeNull();
+    expect($(".as-sr[role=status]")!.textContent).toBe("Restored 2 lines.");
+  });
+
+  it("keyboard remove focuses Undo; Undo focuses the restored line, Escape the next one", () => {
+    const before = lineIds();
+    press(removeButton(0), 0);
+    expect(document.activeElement).toBe(undoButton());
+    press(undoButton(), 0);
+    expect(lineIds()).toEqual(before);
+    expect(document.activeElement).toBe(removeButton(0));
+    press(removeButton(0), 0);
+    escape();
+    expect($(".as-toast")).toBeNull();
+    expect(document.activeElement).toBe(removeButton(0));
+    // No line left to land on: Add line.
+    press(removeButton(0), 0);
+    escape();
+    expect(document.activeElement).toBe(button("Add line"));
   });
 });
