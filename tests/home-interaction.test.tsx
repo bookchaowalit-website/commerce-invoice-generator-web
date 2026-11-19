@@ -76,6 +76,23 @@ describe("draft", () => {
     expect(css).not.toMatch(/\.iv-layout \{ grid-template-columns: 1fr; \}/);
   });
 
+  it("names each line's Qty and Rate fields after the line item", () => {
+    const names = [...host.querySelectorAll<HTMLLabelElement>(".iv-line label")].map((label) => label.textContent?.trim());
+    const items = [...host.querySelectorAll<HTMLInputElement>(".iv-desc input")].map((input) => input.value);
+    expect(items.length).toBeGreaterThan(0);
+    items.forEach((item, index) => {
+      expect(names).toContain(`Qty for ${item || `item ${index + 1}`}`);
+      expect(names).toContain(`Rate (THB) for ${item || `item ${index + 1}`}`);
+    });
+  });
+
+  it("prints dark ink on white paper even when the OS is in dark mode", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync(`${process.cwd()}/app/globals.css`, "utf8");
+    const print = css.split("@media print")[1] ?? "";
+    expect(print).toMatch(/:root \{[^}]*color-scheme: light;[^}]*--as-bg: #ffffff;[^}]*--as-surface: #ffffff;[^}]*--as-fg: #1d1d1f;/);
+  });
+
   it("edits parties, lines and taxes, and the totals follow", () => {
     type($<HTMLInputElement>("#from")!, "");
     type($<HTMLInputElement>("#to")!, "");

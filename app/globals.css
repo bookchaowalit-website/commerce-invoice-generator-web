@@ -65,6 +65,15 @@ html { scroll-padding-top: 64px; }
   .as-button, .as-plain { border: 1px solid ButtonText; }
 }
 @media print {
+  /* Paper is white with dark ink whatever the OS theme: reset the shell's dark-mode tokens to the light set
+     (app-shell.css stays a shared copy; this overrides it here). */
+  :root {
+    color-scheme: light;
+    --as-bg: #ffffff; --as-surface: #ffffff; --as-fg: #1d1d1f; --as-muted: #6e6e73; --as-line: #d2d2d7; --as-field-line: #86868b;
+    --as-hover: transparent; --as-selected: #e8e8ed; --as-accent: #0066cc; --as-focus: #0071e3; --as-danger: #c9252c;
+    --as-green: #136c2e; --as-green-bg: #e3f5e8; --as-amber: #8a5300; --as-amber-bg: #fdf0d5; --as-grey: #515154; --as-grey-bg: #ececf0;
+    --as-red: #b3261e; --as-red-bg: #fde8e6; --as-shadow: none;
+  }
   .as-top, .as-foot, .as-skip, .iv-head, .iv-form, .as-toast { display: none !important; }
   .iv-page { padding: 0; }
   .iv-layout { display: block; }

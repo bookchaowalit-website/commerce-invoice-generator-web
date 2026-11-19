@@ -183,8 +183,8 @@ export default function Home() {
                   {draft.lines.map((line, index) => (
                     <li key={line.id} className="iv-line" data-item={line.id}>
                       <label className="as-field iv-desc">Item {index + 1}<input value={line.desc} onChange={(event) => updateLine(line.id, { desc: event.target.value })} /></label>
-                      <label className="as-field">Qty<input type="number" min="0" step="any" inputMode="decimal" value={line.qty} onChange={(event) => updateLine(line.id, { qty: toAmount(event.target.value) })} /></label>
-                      <label className="as-field">Rate (THB)<input type="number" min="0" step="any" inputMode="decimal" value={line.price} onChange={(event) => updateLine(line.id, { price: toAmount(event.target.value) })} /></label>
+                      <label className="as-field">Qty<span className="as-sr"> for {line.desc || `item ${index + 1}`}</span><input type="number" min="0" step="any" inputMode="decimal" value={line.qty} onChange={(event) => updateLine(line.id, { qty: toAmount(event.target.value) })} /></label>
+                      <label className="as-field">Rate (THB)<span className="as-sr"> for {line.desc || `item ${index + 1}`}</span><input type="number" min="0" step="any" inputMode="decimal" value={line.price} onChange={(event) => updateLine(line.id, { price: toAmount(event.target.value) })} /></label>
                       <div className="iv-line-foot">
                         <span>{formatTHB(lineTotal(line))}</span>
                         <button type="button" className="as-plain as-danger" aria-label={`Remove ${line.desc || `item ${index + 1}`}`} onClick={(event) => removeLine(line, event.detail === 0)}>Remove</button>
