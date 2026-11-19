@@ -6,11 +6,13 @@ import { useEffect, useState } from "react";
  * State mirrored to localStorage. The first render always uses `initial` so the
  * server and client markup match; the stored value is read after mount and run
  * through `parse`, which should return null for missing or invalid data.
- * Pass a stable (module-level) `parse` function.
+ * Pass a stable (module-level) `parse` function. The fourth value says whether a stored value was found,
+ * so callers can tell a new value from a saved one that merely has empty fields.
  */
 export function useStoredState<T>(key: string, initial: T, parse: (raw: string | null) => T | null) {
   const [value, setValue] = useState<T>(initial);
   const [ready, setReady] = useState(false);
+  const [restored, setRestored] = useState(false);
 
   useEffect(() => {
     let stored: T | null = null;
@@ -22,6 +24,7 @@ export function useStoredState<T>(key: string, initial: T, parse: (raw: string |
     // Hydrating from browser-only storage after mount is the intended use of this effect.
     /* eslint-disable react-hooks/set-state-in-effect */
     if (stored !== null) setValue(stored);
+    setRestored(stored !== null);
     setReady(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [key, parse]);
@@ -35,5 +38,5 @@ export function useStoredState<T>(key: string, initial: T, parse: (raw: string |
     }
   }, [key, value, ready]);
 
-  return [value, setValue, ready] as const;
+  return [value, setValue, ready, restored] as const;
 }

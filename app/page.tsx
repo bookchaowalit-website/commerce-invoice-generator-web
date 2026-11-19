@@ -55,7 +55,7 @@ function putBack(list: Line[], item: Line, index: number): Line[] {
 }
 
 export default function Home() {
-  const [draft, setDraft, ready] = useStoredState("invoice-generator-draft-v2", INITIAL_DRAFT, parseDraft);
+  const [draft, setDraft, ready, restored] = useStoredState("invoice-generator-draft-v2", INITIAL_DRAFT, parseDraft);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [announcement, setAnnouncement] = useState("");
   // Every removal still inside the Undo window: one Undo puts them all back where they were.
@@ -71,14 +71,14 @@ export default function Home() {
   const totals = useMemo(() => invoiceTotals(draft), [draft]);
   const invoiceText = useMemo(() => renderInvoiceText(draft), [draft]);
 
-  // A draft without a date starts dated today, once, after the stored draft has loaded (a saved date is
-  // kept, and clearing the field later is respected).
+  // Only a new draft (nothing saved in this browser) starts dated today, once, after storage has been read. A saved
+  // draft keeps its date, including an empty one the user cleared on purpose.
   const dated = useRef(false);
   useEffect(() => {
     if (!ready || dated.current) return;
     dated.current = true;
-    setDraft((current) => (current.issued ? current : { ...current, issued: todayIso() }));
-  }, [ready, setDraft]);
+    if (!restored) setDraft((current) => (current.issued ? current : { ...current, issued: todayIso() }));
+  }, [ready, restored, setDraft]);
   // A removal made from the keyboard moves focus to Undo (the focused Remove button has just gone).
   useEffect(() => { if (removed?.viaKeyboard) undoRef.current?.focus(); }, [removed]);
   // When the toast closes after Undo or Escape, focus goes back near the removed row once the list has re-rendered:

@@ -31,7 +31,7 @@ html { scroll-padding-top: 64px; }
 .iv-paper:focus { outline: none; }
 .iv-paper-top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; padding-bottom: 12px; border-bottom: 2px solid var(--as-fg); }
 .iv-paper-top strong { font-size: 24px; font-weight: 700; letter-spacing: -.01em; }
-.iv-paper-top span { color: var(--as-muted); font-size: 14px; }
+.iv-paper-top span { min-width: 0; color: var(--as-muted); font-size: 14px; overflow-wrap: anywhere; }
 .iv-parties { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; }
 .iv-parties dt, .iv-taxes dt { color: var(--as-muted); font-size: 13px; font-weight: 600; }
 .iv-parties dd { margin: 2px 0 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
@@ -51,7 +51,7 @@ html { scroll-padding-top: 64px; }
 .iv-paper-note { margin: 0; color: var(--as-muted); font-size: 13px; }
 
 @media (max-width: 899px) {
-  .iv-layout { grid-template-columns: 1fr; }
+  .iv-layout { grid-template-columns: minmax(0, 1fr); }
   .iv-paper { position: static; }
 }
 @media (max-width: 560px) {

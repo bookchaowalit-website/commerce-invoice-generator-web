@@ -56,6 +56,26 @@ describe("draft", () => {
     expect($(".iv-paper-top time")).toBeNull();
   });
 
+  it("keeps a saved draft's empty date empty after a reload (only a new draft is dated today)", async () => {
+    await flush();
+    const saved = JSON.parse(localStorage.getItem("invoice-generator-draft-v2")!);
+    act(() => root.unmount());
+    host.remove();
+    localStorage.setItem("invoice-generator-draft-v2", JSON.stringify({ ...saved, issued: "" }));
+    mount();
+    await flush();
+    expect($<HTMLInputElement>("#issued")!.value).toBe("");
+    expect($(".iv-paper-top time")).toBeNull();
+    expect(JSON.parse(localStorage.getItem("invoice-generator-draft-v2")!).issued).toBe("");
+  });
+
+  it("lets a long invoice number wrap instead of widening the page", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync(`${process.cwd()}/app/globals.css`, "utf8");
+    expect(css).toMatch(/\.iv-paper-top span \{[^}]*min-width: 0;[^}]*overflow-wrap: anywhere;/);
+    expect(css).not.toMatch(/\.iv-layout \{ grid-template-columns: 1fr; \}/);
+  });
+
   it("edits parties, lines and taxes, and the totals follow", () => {
     type($<HTMLInputElement>("#from")!, "");
     type($<HTMLInputElement>("#to")!, "");
